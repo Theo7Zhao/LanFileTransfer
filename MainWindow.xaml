@@ -1,0 +1,433 @@
+<Window x:Class="TheoTransfer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Theo文件传输" Height="720" Width="1030" MinHeight="620" MinWidth="940"
+        WindowStartupLocation="CenterScreen" AllowDrop="True" Background="Transparent"
+        Icon="Assets/logo.ico"
+        DragOver="Window_DragOver" Drop="Window_Drop" Closed="Window_Closed">
+    <Window.Resources>
+        <!-- 玻璃底色（亚克力生效时半透明，桌面隐约透出） -->
+        <LinearGradientBrush x:Key="GlassBg" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#E6F7FAFD" Offset="0"/>
+            <GradientStop Color="#DFECF4FC" Offset="0.55"/>
+            <GradientStop Color="#D9E6F1FB" Offset="1"/>
+        </LinearGradientBrush>
+        <!-- 亚克力不可用时的不透明兜底底色 -->
+        <LinearGradientBrush x:Key="FallbackBg" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FFF6FAFD" Offset="0"/>
+            <GradientStop Color="#FFECF4FC" Offset="0.55"/>
+            <GradientStop Color="#FFE6F1FB" Offset="1"/>
+        </LinearGradientBrush>
+
+        <SolidColorBrush x:Key="CardBg" Color="#A8FFFFFF"/>
+        <SolidColorBrush x:Key="CardBorder" Color="#80FFFFFF"/>
+        <SolidColorBrush x:Key="SubBg" Color="#73FFFFFF"/>
+        <SolidColorBrush x:Key="TextMain" Color="#16304F"/>
+        <SolidColorBrush x:Key="TextSub" Color="#42526B"/>
+        <SolidColorBrush x:Key="Accent" Color="#2A6FC9"/>
+        <SolidColorBrush x:Key="AccentDeep" Color="#1D4E89"/>
+
+        <!-- 模式切换选中态：品牌渐变（同主按钮） -->
+        <LinearGradientBrush x:Key="ModeSelBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#FF3E86DC" Offset="0"/>
+            <GradientStop Color="#FF2A6FC9" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- 按钮：玻璃质感（hover 高光层叠加，不破坏背景） -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource SubBg}"/>
+            <Setter Property="BorderBrush" Value="#59FFFFFF"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMain}"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1" CornerRadius="9"/>
+                            <Border x:Name="hov" Background="#2EFFFFFF" CornerRadius="9" Visibility="Collapsed"/>
+                            <Border x:Name="press" Background="#3D1E3A5F" CornerRadius="9" Opacity="0" Margin="1"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="hov" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="press" Property="Opacity" Value="0.12"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 主操作按钮：品牌渐变 -->
+        <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#FF3E86DC" Offset="0"/>
+                        <GradientStop Color="#FF2A6FC9" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="BorderBrush" Value="#66FFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- 输入框：玻璃卡片 -->
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="{StaticResource TextMain}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Accent}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="bd" Background="#A6FFFFFF" BorderBrush="#66D5DEE8"
+                                BorderThickness="1" CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="6,4"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ProgressBar">
+            <Setter Property="Foreground">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#FF2A6FC9" Offset="0"/>
+                        <GradientStop Color="#FF38B26A" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Background" Value="#241E3A5F"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid>
+                            <Border CornerRadius="7" Background="{TemplateBinding Background}"
+                                    BorderBrush="#26FFFFFF" BorderThickness="1" ClipToBounds="True"/>
+                            <Border x:Name="PART_Track" CornerRadius="7"/>
+                            <Border x:Name="PART_Indicator" CornerRadius="7"
+                                    Background="{TemplateBinding Foreground}"
+                                    HorizontalAlignment="Left" ClipToBounds="True"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 标签页：玻璃胶囊 -->
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TabPanel IsItemsHost="True" Background="Transparent"/>
+                            <Border Grid.Row="1" Background="{StaticResource CardBg}"
+                                    BorderBrush="{StaticResource CardBorder}" BorderThickness="1"
+                                    CornerRadius="12" Margin="0,8,0,0" Padding="6">
+                                <ContentPresenter ContentSource="SelectedContent"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="bd" CornerRadius="10,10,0,0" Padding="16,8"
+                                Background="Transparent" BorderBrush="#33FFFFFF"
+                                BorderThickness="1,1,1,0" Margin="2,0,2,-1">
+                            <ContentPresenter ContentSource="Header" TextElement.Foreground="{StaticResource TextSub}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#CCEAF2FC"/>
+                                <Setter Property="TextElement.Foreground" Value="{StaticResource AccentDeep}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#40FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="GridViewColumnHeader">
+            <Setter Property="Foreground" Value="{StaticResource TextSub}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridViewColumnHeader">
+                        <Border Background="#33FFFFFF" BorderBrush="#3FFFFFFF"
+                                BorderThickness="0,0,1,1" CornerRadius="6" Margin="0,2,3,4" Padding="4,5">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ListView">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#24303E"/>
+        </Style>
+
+        <Style TargetType="ListViewItem">
+            <Setter Property="Foreground" Value="#24303E"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="8" Padding="4,4">
+                            <GridViewRowPresenter Content="{TemplateBinding Content}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#142A6FC9"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2E2A6FC9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootHost" Background="{StaticResource GlassBg}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="348"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧：连接与验证（玻璃侧栏） -->
+                <Border Background="#4DFFFFFF" BorderBrush="#3DFFFFFF" BorderThickness="0,0,1,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="18,9,18,8">
+                            <TextBlock Text="Theo文件传输" FontSize="22" FontWeight="Bold"
+                                       Foreground="{StaticResource TextMain}" Margin="0,0,0,2"/>
+                            <TextBlock Text="手机扫码 · 局域网互传 · 主客双模式" Foreground="{StaticResource TextSub}"
+                                       FontSize="12" Margin="0,3,0,7"/>
+
+                            <!-- 模式切换：客模式优先展示 -->
+                            <Border Background="#73FFFFFF" CornerRadius="10" Padding="3" Margin="0,0,0,8"
+                                    BorderBrush="#59FFFFFF" BorderThickness="1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="GuestModeBtn" Content="访客模式" Click="GuestMode_Click"
+                                            Padding="0,6" FontSize="13"/>
+                                    <Button x:Name="HostModeBtn" Content="主机模式" Click="HostMode_Click"
+                                            Grid.Column="1" Padding="0,6" FontSize="13"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- 凭据卡片：客模式=配对码 / 主模式=静态密钥（均拼入二维码） -->
+                            <Border Background="#B8E4F0FB" CornerRadius="12" Padding="11,7"
+                                    BorderBrush="#80D6E6FA" BorderThickness="1" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="CredTitle" Text="配对码（已拼入二维码）" FontSize="12"
+                                                   Foreground="#1D4E89" VerticalAlignment="Center"/>
+                                        <Button x:Name="CredRefreshBtn" Grid.Column="1" Content="刷新配对码"
+                                                Click="RefreshCred_Click" Padding="9,2" FontSize="11"/>
+                                    </Grid>
+                                    <TextBlock x:Name="CredValue" FontSize="29" FontWeight="Bold"
+                                               FontFamily="Consolas, Courier New" Foreground="{StaticResource AccentDeep}"
+                                               HorizontalAlignment="Center" Margin="0,4,0,1"/>
+                                    <TextBlock x:Name="CredHint" FontSize="10.5" Foreground="#3F5B7A" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 二维码 -->
+                            <Border Background="#D9FFFFFF" CornerRadius="12" Padding="7"
+                                    BorderBrush="{StaticResource CardBorder}" BorderThickness="1"
+                                    HorizontalAlignment="Center" Margin="0,0,0,7">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.16" Direction="270"/>
+                                </Border.Effect>
+                                <Image x:Name="QrImage" Width="170" Height="170"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                            </Border>
+                            <TextBlock x:Name="UrlText" TextAlignment="Center" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMain}" FontSize="12.5" Margin="4,0,4,2"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock x:Name="QrHint" TextAlignment="Center" Foreground="{StaticResource TextSub}"
+                                       FontSize="11" Margin="4,2,4,7"/>
+
+                            <!-- 网络设置 -->
+                            <TextBlock Text="网络接口" FontSize="12" Foreground="{StaticResource TextSub}" Margin="0,0,0,4"/>
+                            <Border Background="{StaticResource SubBg}" CornerRadius="8"
+                                    BorderBrush="#59FFFFFF" BorderThickness="1" Padding="8,5">
+                                <ComboBox x:Name="IpCombo" SelectionChanged="IpCombo_SelectionChanged"
+                                          Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center"/>
+                            </Border>
+
+                            <Grid Margin="0,7,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="端口" FontSize="12" Foreground="{StaticResource TextSub}"
+                                           VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBox x:Name="PortBox" Grid.Column="1" Text="8421" LostFocus="PortBox_Changed" KeyDown="PortBox_KeyDown"/>
+                                <Button Grid.Column="2" Content="重启服务" Click="Restart_Click" Padding="12,4" Margin="8,0,0,0"/>
+                            </Grid>
+
+                            <!-- 接收文件夹：路径 + 打开 + 更改（合并一行） -->
+                            <TextBlock Text="接收文件夹（手机发来的文件保存在这里）" FontSize="12"
+                                       Foreground="{StaticResource TextSub}" Margin="0,10,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="FolderBox" IsReadOnly="True"
+                                         ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}"/>
+                                <Button Grid.Column="1" Content="打开" Click="OpenFolder_Click"
+                                        Padding="11,4" Margin="8,0,0,0"/>
+                                <Button Grid.Column="2" Content="更改…" Click="BrowseFolder_Click"
+                                        Padding="11,4" Margin="8,0,0,0"/>
+                            </Grid>
+
+                            <TextBlock Text="提示：若手机无法打开，请在 Windows 防火墙中允许 TheoTransfer（专用网络）"
+                                       Foreground="#3D4A5E" FontSize="10.5" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- 右侧：传输记录 / 共享列表 -->
+                <TabControl Margin="14,14,14,10" Grid.Column="1">
+                    <TabItem Header="  传输记录  ">
+                        <Grid Margin="4,6,4,4">
+                            <ListView x:Name="RecordsList">
+                                <ListView.View>
+                                    <GridView AllowsColumnReorder="False">
+                                        <GridViewColumn Header="方向" Width="95" DisplayMemberBinding="{Binding DirectionText}"/>
+                                        <GridViewColumn Header="文件名" Width="250" DisplayMemberBinding="{Binding FileName}"/>
+                                        <GridViewColumn Header="大小" Width="85" DisplayMemberBinding="{Binding SizeText}"/>
+                                        <GridViewColumn Header="进度" Width="190">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <ProgressBar Height="14" Minimum="0" Maximum="100"
+                                                                     Value="{Binding Percent, Mode=OneWay}"/>
+                                                        <TextBlock Text="{Binding PercentText}" FontSize="10.5"
+                                                                   Foreground="{StaticResource AccentDeep}" FontWeight="SemiBold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                        <GridViewColumn Header="速度" Width="90" DisplayMemberBinding="{Binding SpeedText}"/>
+                                        <GridViewColumn Header="状态" Width="130" DisplayMemberBinding="{Binding StatusText}"/>
+                                        <GridViewColumn Header="时间" Width="75" DisplayMemberBinding="{Binding TimeText}"/>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                            <TextBlock x:Name="EmptyRecords" IsHitTestVisible="False"
+                                       Text="暂无传输记录 — 手机连接后，发送 / 下载的文件会显示在这里"
+                                       Foreground="#708090" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </TabItem>
+                    <TabItem Header="  共享给手机  ">
+                        <DockPanel Margin="4,6,4,4">
+                            <Grid DockPanel.Dock="Top" Margin="2,2,2,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="手机端「电脑共享的文件」可直接下载或预览；把文件拖入本窗口也可共享"
+                                           Foreground="{StaticResource TextSub}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" FontSize="12"/>
+                                <Button Grid.Column="1" Content="添加文件…" Click="AddShare_Click" Margin="0,0,8,0" Padding="12,4"/>
+                                <Button Grid.Column="2" Content="清空" Click="ClearShares_Click" Padding="12,4"/>
+                            </Grid>
+                            <ListView x:Name="SharedList">
+                                <ListView.View>
+                                    <GridView AllowsColumnReorder="False">
+                                        <GridViewColumn Header="文件名" Width="400" DisplayMemberBinding="{Binding Name}"/>
+                                        <GridViewColumn Header="大小" Width="100" DisplayMemberBinding="{Binding SizeText}"/>
+                                        <GridViewColumn Header="操作" Width="80">
+                                            <GridViewColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="移除" Padding="8,1" Click="RemoveShare_Click" Tag="{Binding Id}"/>
+                                                </DataTemplate>
+                                            </GridViewColumn.CellTemplate>
+                                        </GridViewColumn>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </DockPanel>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+
+            <!-- 状态栏 -->
+            <Border Grid.Row="1" Background="#59FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="0,1,0,0" Padding="14,6,14,6">
+                <TextBlock x:Name="StatusText" Text="正在启动服务…" Foreground="{StaticResource TextSub}" FontSize="12"/>
+            </Border>
+
+            <!-- 非阻断式通知（Toast）：自动消失，点击也可关闭 -->
+            <Border x:Name="ToastCard" Grid.RowSpan="2" Visibility="Collapsed" Panel.ZIndex="100"
+                    HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,16,0,0"
+                    Background="#F5FFFFFF" CornerRadius="12" Padding="18,11,18,10" Cursor="Hand"
+                    BorderBrush="#C92A6FC9" BorderThickness="1.2"
+                    MouseLeftButtonUp="ToastCard_MouseLeftButtonUp">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.28"/>
+                </Border.Effect>
+                <StackPanel MaxWidth="480">
+                    <TextBlock x:Name="ToastTitle" Text="通知" FontSize="14" FontWeight="Bold" Foreground="#16304F"/>
+                    <TextBlock x:Name="ToastMessage" Text="" FontSize="12" Foreground="#42526B"
+                               TextWrapping="Wrap" Margin="0,3,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

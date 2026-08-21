@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d4e89">
+<title>Theo文件传输</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",sans-serif;background:#eef1f6;color:#24303e;min-height:100vh}
+header{background:linear-gradient(135deg,#1d4e89,#2a6fc9);color:#fff;padding:16px 16px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
+header .logo{font-size:22px}
+header h1{font-size:18px;margin:0;font-weight:600}
+header .pc{font-size:12px;opacity:.85;margin-left:auto;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrap{padding:14px;max-width:640px;margin:0 auto}
+.card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 10px rgba(30,58,95,.08);margin-bottom:14px}
+.hint{color:#7b8794;font-size:13px;text-align:center;margin:4px 0 14px}
+.code-input{width:100%;font-size:28px;letter-spacing:12px;text-align:center;border:2px solid #d5dde8;border-radius:10px;padding:12px 0 12px 12px;outline:none;font-weight:700;font-family:ui-monospace,Consolas,monospace}
+.code-input:focus{border-color:#2a6fc9}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px;font-size:16px;font-weight:600;background:#2a6fc9;color:#fff;margin-top:12px}
+.btn:active{opacity:.85}
+.btn.ghost{background:#eaf0f8;color:#2a6fc9}
+.err{color:#d5494a;font-size:13px;text-align:center;margin-top:10px;min-height:18px}
+.drop{border:2px dashed #b9c6d8;border-radius:14px;padding:24px 14px;text-align:center;color:#5b6b7e;background:#f7f9fc}
+.drop.on{border-color:#2a6fc9;background:#eaf2fd}
+.drop .big{font-size:34px}
+.actions{display:flex;gap:10px;margin-top:12px}
+.actions .btn{margin-top:0}
+.sec-title{font-size:15px;font-weight:600;margin:2px 0 10px;display:flex;align-items:center;gap:6px}
+.file{border-bottom:1px solid #eef1f5;padding:10px 2px}
+.file:last-child{border-bottom:0}
+.frow{display:flex;align-items:center;gap:10px}
+.fmain{flex:1;min-width:0}
+.fname{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fsize{font-size:12px;color:#8794a5}
+.bar{height:6px;background:#e6ebf2;border-radius:4px;overflow:hidden;margin-top:7px}
+.bar>div{height:100%;background:linear-gradient(90deg,#38b26a,#4fc987);width:0;transition:width .15s}
+.bar.err>div{background:#d5494a}
+.meta{display:flex;justify-content:space-between;font-size:11px;color:#8794a5;margin-top:4px}
+.icon{font-size:20px}
+.dl{display:inline-block;padding:7px 14px;border-radius:8px;background:#2a6fc9;color:#fff;font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap}
+.dl.ghost{background:#eaf0f8;color:#2a6fc9}
+.cancel{border:0;background:#f7e8e8;color:#c04040;border-radius:8px;padding:5px 11px;font-size:12px}
+.empty{text-align:center;color:#9aa7b6;font-size:13px;padding:14px 0}
+.warn{background:#fff6de;border:1px solid #f0dca0;color:#7c6012;border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.55;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start}
+.warn .wicon{font-size:15px;line-height:1.3}
+footer{text-align:center;color:#9aa7b6;font-size:11px;padding:8px 0 20px}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<header><span class="logo"></span><h1>Theo文件传输</h1><span class="pc" id="pcName"></span></header>
+<div class="wrap">
+
+  <!-- 公共场所安全提醒（被动展示，不增加任何操作步骤） -->
+  <div class="warn"><span class="wicon">🔒</span><span>传输内容<b>未加密</b>：在机场、咖啡厅、酒店等公共 Wi-Fi 环境下，同一网络内的设备可能截获传输内容，请勿传输敏感文件，建议在可信网络中使用。</span></div>
+
+  <div id="pairView" class="card">
+    <div class="hint" id="pairHint">请输入电脑上显示的 <b>6 位配对码</b></div>
+    <input id="codeInput" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······">
+    <button id="pairBtn" class="btn">连 接</button>
+    <div class="err" id="pairMsg"></div>
+  </div>
+
+  <div id="mainView" style="display:none">
+    <div class="card">
+      <div class="sec-title">📤 发送到电脑</div>
+      <div class="drop" id="drop">
+        <div class="big">📁</div>
+        <div>轻触选择文件，或将文件拖到这里</div>
+        <div class="actions">
+          <button class="btn" id="pickBtn">选择文件</button>
+          <button class="btn ghost" id="camBtn">拍照</button>
+          <button class="btn ghost" id="vidBtn">录像</button>
+        </div>
+      </div>
+      <div id="queue"></div>
+    </div>
+    <div class="card">
+      <div class="sec-title">📥 电脑共享的文件 <span id="outCount" style="font-weight:400;color:#8794a5;font-size:12px"></span></div>
+      <div id="outbox" class="empty">暂无文件</div>
+    </div>
+  </div>
+
+</div>
+<footer>局域网直连 · 不消耗流量 · Theo文件传输</footer>
+<input type="file" id="fileInput" multiple>
+<input type="file" id="camInput" accept="image/*" capture="environment">
+<input type="file" id="vidInput" accept="video/*" capture="environment">
+
+<script>
+const $=id=>document.getElementById(id);
+const CHUNK=4*1024*1024;
+let token=sessionStorage.getItem('lt_token')||'';
+const state={active:0,queue:[]};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function human(n){if(!isFinite(n)||n<1024)return Math.round(n)+' B';const u=['KB','MB','GB','TB'];let i=-1;do{n/=1024;i++}while(n>=1024&&i<u.length-1);return n.toFixed(n>=100?0:1)+' '+u[i]}
+
+async function api(path,opts={}){
+  opts.headers=Object.assign({'X-Auth-Token':token},opts.headers||{});
+  const r=await fetch(path,opts);
+  if(r.status===401){showPair('连接已过期，请重新输入配对码');throw new Error('401')}
+  return r;
+}
+
+/* ---------- 连接（主模式 key 自动连接 / 客模式 code 一键连接 / 手动输入兜底） ---------- */
+const qs=new URLSearchParams(location.search);
+const urlCode=(qs.get('code')||'').replace(/\D/g,'').slice(0,6);
+const urlKey=(qs.get('key')||'');
+const savedKey=localStorage.getItem('lt_key')||'';
+let guestReady=false;
+
+async function boot(){
+  try{const r=await fetch('/api/info');if(r.ok){const j=await r.json();$('pcName').textContent=j.name}}catch(e){}
+  // 访客二维码（?code=）优先级最高：即使本机已存密钥/令牌，也必须显式点「连接」
+  if(urlCode.length===6){showGuestReady();return}
+  const key=urlKey||savedKey;
+  if(key&&await tryKey(key))return;
+  if(token){
+    try{const r=await api('/api/verify');if(r.ok){showMain();return}}catch(e){}
+  }
+  showPair();
+}
+function showPair(msg){
+  guestReady=false;
+  $('pairHint').innerHTML='请输入电脑上显示的 <b>6 位配对码</b>';
+  $('codeInput').style.display='';
+  $('pairView').style.display='';$('mainView').style.display='none';
+  $('pairMsg').textContent=msg||'';setTimeout(()=>$('codeInput').focus(),50);
+}
+function showGuestReady(){
+  guestReady=true;
+  $('codeInput').value=urlCode;
+  $('codeInput').style.display='none';
+  $('pairHint').innerHTML='✅ 已通过二维码完成验证准备';
+  $('pairView').style.display='';$('mainView').style.display='none';
+  $('pairMsg').textContent='';
+}
+function showMain(){$('pairView').style.display='none';$('mainView').style.display='';refreshOutbox()}
+
+async function tryKey(key){
+  try{
+    const r=await fetch('/api/pair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
+    if(r.ok){
+      const j=await r.json();
+      token=j.token;sessionStorage.setItem('lt_token',token);
+      localStorage.setItem('lt_key',key);
+      showMain();return true;
+    }
+    if(r.status===401)localStorage.removeItem('lt_key');
+  }catch(e){}
+  return false;
+}
+
+async function pair(){
+  const code=$('codeInput').value.replace(/\D/g,'');
+  if(code.length!==6){$('pairMsg').textContent='请输入 6 位数字配对码';return}
+  $('pairBtn').disabled=true;
+  try{
+    const r=await fetch('/api/pair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    if(r.ok){
+      const j=await r.json();
+      token=j.token;sessionStorage.setItem('lt_token',token);
+      guestReady=false;
+      $('pairMsg').textContent='';$('codeInput').value='';
+      showMain();
+    }
+    else if(r.status===429)$('pairMsg').textContent='尝试次数过多，请 30 秒后再试';
+    else if(guestReady)showPair('二维码中的配对码已失效（可能已被刷新），请重新扫码或手动输入');
+    else $('pairMsg').textContent='配对码不正确，请核对电脑上的数字';
+  }catch(e){$('pairMsg').textContent='无法连接电脑，请确认与电脑在同一 Wi-Fi'}
+  $('pairBtn').disabled=false;
+}
+$('pairBtn').onclick=pair;
+$('codeInput').oninput=e=>{
+  e.target.value=e.target.value.replace(/\D/g,'');
+  if(e.target.value.length===6)pair();
+};
+
+/* ---------- 上传（分块 + 自动重试 + 断点续传） ---------- */
+function addFiles(files){
+  for(const f of files){const t=makeTask(f);state.queue.push(t)}
+  pump();
+}
+function makeTask(file){
+  const el=document.createElement('div');el.className='file';
+  el.innerHTML=
+    `<div class="frow"><span class="icon">📄</span>`+
+    `<span class="fmain"><span class="fname">${esc(file.name)}</span><br><span class="fsize">${human(file.size)}</span></span>`+
+    `<button class="cancel">取消</button></div>`+
+    `<div class="bar"><div></div></div>`+
+    `<div class="meta"><span class="st">等待中</span><span class="sp"></span></div>`;
+  const t={file,el,received:0,id:null,cancelled:false,ctrl:null,markT:0,markB:0,
+    bar:el.querySelector('.bar>div'),st:el.querySelector('.st'),sp:el.querySelector('.sp'),btn:el.querySelector('.cancel')};
+  t.btn.onclick=()=>{
+    t.cancelled=true;
+    try{t.ctrl&&t.ctrl.abort()}catch(e){}
+    if(t.id)api('/api/upload/cancel?id='+t.id,{method:'POST'}).catch(()=>{});
+    t.st.textContent='已取消';t.btn.remove();
+  };
+  $('queue').insertBefore(el,$('queue').firstChild);
+  return t;
+}
+function pump(){
+  while(state.active<2&&state.queue.length){
+    state.active++;
+    run(state.queue.shift()).finally(()=>{state.active--;pump()});
+  }
+}
+async function run(t){
+  try{
+    const r=await api(`/api/upload/init?name=${encodeURIComponent(t.file.name)}&size=${t.file.size}`,{method:'POST'});
+    if(!r.ok)throw 0;
+    const m=await r.json();
+    t.id=m.uploadId;t.received=m.offset;progress(t);
+    while(t.received<t.file.size&&!t.cancelled){
+      const res=await chunk(t,m.chunkSize||CHUNK);
+      if(res==='resync')continue;
+      if(!res)return fail(t,'多次重试仍失败');
+    }
+    if(t.cancelled)return;
+    t.st.textContent='完成中…';
+    const c=await api('/api/upload/complete?id='+t.id,{method:'POST'});
+    if(c.ok){t.bar.style.width='100%';t.st.textContent='✓ 已保存到电脑';t.sp.textContent='';t.btn.remove()}
+    else{
+      const j=await c.json().catch(()=>({}));
+      const miss=(j.total!=null&&j.expected!=null)?`，还差 ${human(j.total-j.expected)}`:'';
+      fail(t,'未完成'+miss);
+    }
+  }catch(e){
+    if(String(e&&e.message)!=='401')fail(t,'无法开始传输');
+  }
+}
+async function chunk(t,chunkSize){
+  const end=Math.min(t.received+chunkSize,t.file.size);
+  for(let a=1;a<=6;a++){
+    if(t.cancelled)return false;
+    t.st.textContent=a>1?`重试中 ${a-1}/5`:'传输中';
+    try{
+      t.ctrl=new AbortController();
+      const r=await api(`/api/upload/chunk?id=${t.id}&offset=${t.received}`,
+        {method:'PUT',body:t.file.slice(t.received,end),signal:t.ctrl.signal});
+      if(r.status===409){const j=await r.json();t.received=j.expected;progress(t);return 'resync'}
+      if(!r.ok)throw 0;
+      const j=await r.json();
+      t.received=j.received;progress(t);return true;
+    }catch(e){
+      if(e&&e.name==='AbortError')return false;
+      await sleep(Math.min(400*a,2000));
+    }
+  }
+  return false;
+}
+function progress(t){
+  const p=t.file.size?t.received*100/t.file.size:100;
+  t.bar.style.width=p+'%';
+  const now=Date.now();
+  if(!t.markT){t.markT=now;t.markB=t.received;return}
+  if(now-t.markT>300){
+    const bps=(t.received-t.markB)*1000/(now-t.markT);
+    t.sp.textContent=`${human(Math.round(bps))}/s · ${human(t.received)} / ${human(t.file.size)}`;
+    t.markT=now;t.markB=t.received;
+  }
+}
+function fail(t,msg){
+  t.st.textContent='✗ '+msg;
+  t.el.querySelector('.bar').classList.add('err');
+  t.btn.remove();
+}
+
+/* ---------- 电脑共享文件列表 ---------- */
+async function refreshOutbox(){
+  try{
+    const r=await api('/api/outbox');
+    if(!r.ok)return;
+    const j=await r.json();
+    const box=$('outbox');
+    if(!j.files.length){box.className='empty';box.textContent='暂无文件';$('outCount').textContent='';return}
+    box.className='';
+    box.innerHTML=j.files.map(f=>{
+      const ext=(f.name.split('.').pop()||'').toLowerCase();
+      const viewable=['jpg','jpeg','png','gif','webp','bmp','mp4','webm','mov','mp3','wav','pdf'].includes(ext);
+      const url=`/api/outbox/${f.id}?token=${encodeURIComponent(token)}`;
+      return `<div class="frow" style="padding:9px 2px;border-bottom:1px solid #eef1f5">`+
+        `<span class="icon">🗂️</span>`+
+        `<span class="fmain"><span class="fname">${esc(f.name)}</span><br><span class="fsize">${human(f.size)}</span></span>`+
+        (viewable?`<a class="dl ghost" href="${url}&inline=1" target="_blank">预览</a>`:'')+
+        `<a class="dl" href="${url}" download>下载</a></div>`;
+    }).join('');
+    $('outCount').textContent='· '+j.files.length+' 个';
+  }catch(e){}
+}
+setInterval(()=>{if($('mainView').style.display!=='none')refreshOutbox()},6000);
+
+/* ---------- 事件绑定 ---------- */
+$('pickBtn').onclick=()=>$('fileInput').click();
+$('camBtn').onclick=()=>$('camInput').click();
+$('vidBtn').onclick=()=>$('vidInput').click();
+const bindPick=id=>{ $(id).onchange=e=>{addFiles(e.target.files);e.target.value=''} };
+bindPick('fileInput');bindPick('camInput');bindPick('vidInput');
+
+const drop=$('drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('on')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('on')}));
+drop.addEventListener('drop',e=>{if(e.dataTransfer&&e.dataTransfer.files.length)addFiles(e.dataTransfer.files)});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>e.preventDefault());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('mainView').style.display!=='none')refreshOutbox()});
+
+boot();
+</script>
+</body>
+</html>
